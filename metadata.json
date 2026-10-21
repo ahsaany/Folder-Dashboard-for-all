@@ -1,0 +1,6 @@
+{
+  "name": "Nada International School Cognia Portal",
+  "description": "Standalone offline-first Windows 11 portal for Nada International School to manage, store, and view Cognia accreditation standards, evidence, and documents across 35 folders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
