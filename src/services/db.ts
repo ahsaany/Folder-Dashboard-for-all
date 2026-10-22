@@ -100,6 +100,7 @@ export async function refreshFolderStats(): Promise<CogniaFolder[]> {
       fileCount: stats.count,
       totalSize: stats.size,
       lastUpdated: stats.lastUpdated,
+      rating: folder.rating !== undefined ? folder.rating : (stats.count >= 2 ? 4 : (stats.count === 1 ? 3 : 0)),
     };
   });
 
@@ -110,6 +111,15 @@ export async function refreshFolderStats(): Promise<CogniaFolder[]> {
 export async function updateFolderMetadata(folder: CogniaFolder): Promise<void> {
   const db = await getDB();
   await db.put('folders', folder);
+}
+
+export async function updateFolderRating(folderId: number, rating: number): Promise<void> {
+  const db = await getDB();
+  const folder = await db.get('folders', folderId);
+  if (folder) {
+    folder.rating = rating;
+    await db.put('folders', folder);
+  }
 }
 
 export async function getFilesInFolder(folderId: number): Promise<FolderFile[]> {

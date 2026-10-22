@@ -32,6 +32,7 @@ export interface CogniaFolder {
   lastUpdated?: string;
   color?: string;
   notes?: string;
+  rating?: number; // 0 to 5 stars
 }
 
 export interface PortalSettings {

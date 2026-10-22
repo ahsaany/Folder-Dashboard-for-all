@@ -21,12 +21,14 @@ interface SettingsModalProps {
   folders: CogniaFolder[];
   onClose: () => void;
   onRefresh: () => void;
+  onDownloadOfflineApp: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   folders,
   onClose,
   onRefresh,
+  onDownloadOfflineApp,
 }) => {
   const [metrics, setMetrics] = useState<{ usedBytes: number; quotaBytes: number; fileCount: number }>({
     usedBytes: 0,
@@ -144,6 +146,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
               Data Management & Backup
             </h4>
+
+            {/* Download Standalone Offline App Package */}
+            <div className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 transition-colors">
+              <div>
+                <p className="text-xs font-bold text-emerald-950">Download Standalone Offline App (.ZIP)</p>
+                <p className="text-[11px] text-emerald-800">
+                  Save entire portal into a local folder on Windows with 1-click batch launcher.
+                </p>
+              </div>
+              <button
+                onClick={onDownloadOfflineApp}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900 hover:bg-black text-amber-300 rounded-lg text-xs font-bold transition-colors shrink-0 shadow-2xs"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-amber-300" />
+                <span>Download App</span>
+              </button>
+            </div>
 
             {/* Export All 35 Folders */}
             <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">

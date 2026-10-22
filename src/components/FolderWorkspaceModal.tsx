@@ -18,10 +18,11 @@ import {
   Clock, 
   Info,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Star
 } from 'lucide-react';
 import { CogniaFolder, FolderFile } from '../types';
-import { getFilesInFolder, saveMultipleFiles, deleteFile, clearFolderFiles } from '../services/db';
+import { getFilesInFolder, saveMultipleFiles, deleteFile, clearFolderFiles, updateFolderRating } from '../services/db';
 import { exportFolderAsZip, formatBytes } from '../services/exportService';
 import { FileViewer } from './FileViewer';
 
@@ -44,9 +45,18 @@ export const FolderWorkspaceModal: React.FC<FolderWorkspaceModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isFullWindow, setIsFullWindow] = useState<boolean>(false);
   const [showGuidelines, setShowGuidelines] = useState<boolean>(false);
+  const [hoverRating, setHoverRating] = useState<number>(0);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+
+  const currentRating = folder.rating !== undefined ? folder.rating : (files.length > 0 ? 4 : 0);
+
+  const handleSetRating = async (ratingVal: number) => {
+    await updateFolderRating(folder.id, ratingVal);
+    folder.rating = ratingVal;
+    onFolderUpdated();
+  };
 
   const loadFiles = async () => {
     setLoading(true);
@@ -195,9 +205,46 @@ export const FolderWorkspaceModal: React.FC<FolderWorkspaceModalProps> = ({
                 <span className="text-xs text-slate-400">·</span>
                 <span className="text-xs text-slate-500 font-medium">{folder.domain}</span>
               </div>
-              <h2 className="text-base font-bold text-slate-900 truncate leading-snug">
-                {folder.name}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-base font-bold text-slate-900 truncate leading-snug">
+                  {folder.name}
+                </h2>
+
+                {/* 5 Stars Rating */}
+                <div 
+                  className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"
+                  title={`Standard Rating: ${currentRating} of 5 Stars (Click star to change)`}
+                >
+                  <span className="text-[10px] font-semibold text-amber-900 font-mono">Rating:</span>
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => handleSetRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="p-0.5 text-amber-400 hover:scale-125 transition-transform"
+                        title={`Rate ${star} Star${star > 1 ? 's' : ''}`}
+                      >
+                        <Star
+                          className={`w-3.5 h-3.5 ${
+                            star <= (hoverRating || currentRating)
+                              ? 'fill-amber-400 text-amber-500 drop-shadow-2xs'
+                              : 'text-slate-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Storage Badge */}
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-xs font-mono">
+                  <span className="text-slate-500">Storage:</span>
+                  <span className="font-semibold text-slate-800">{formatBytes(folder.totalSize)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -376,7 +423,7 @@ export const FolderWorkspaceModal: React.FC<FolderWorkspaceModalProps> = ({
             {/* Left Panel Footer Summary */}
             <div className="p-3 bg-slate-50/90 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
               <span className="font-mono tabular-nums">
-                {files.length} {files.length === 1 ? 'file' : 'files'} · {formatBytes(folder.totalSize)}
+                {files.length} {files.length === 1 ? 'file' : 'files'} · Storage: {formatBytes(folder.totalSize)}
               </span>
               {files.length > 0 && (
                 <button

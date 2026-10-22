@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1B5E20" />
+      <stop offset="100%" stopColor="#0B3A10" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#FFD54F" />
+      <stop offset="50%" stopColor="#FFC107" />
+      <stop offset="100%" stopColor="#FFA000" />
+    </linearGradient>
+  </defs>
+  <path d="M50 6 C74 6 88 16 88 38 C88 64 68 84 50 94 C32 84 12 64 12 38 C12 16 26 6 50 6 Z" fill="url(#shieldGrad)" stroke="url(#goldGrad)" stroke-width="3.5"/>
+  <path d="M50 12 C70 12 82 20 82 38 C82 60 65 77 50 86 C35 77 18 60 18 38 C18 20 30 12 50 12 Z" fill="none" stroke="#FFD54F" stroke-width="1" stroke-opacity="0.4"/>
+  <path d="M32 46 C38 43 45 44 50 48 C55 44 62 43 68 46 L68 62 C62 59 55 60 50 64 C45 60 38 59 32 62 Z" fill="#FFFFFF" fill-opacity="0.95"/>
+  <path d="M50 48 L50 64" stroke="#1B5E20" stroke-width="1.5"/>
+  <path d="M50 22 L53 28 L59 29 L54 34 L56 40 L50 37 L44 40 L46 34 L41 29 L47 28 Z" fill="url(#goldGrad)"/>
+  <text x="50" y="77" text-anchor="middle" fill="#FFD54F" font-size="8.5" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" letter-spacing="1.5">NIS</text>
+</svg>

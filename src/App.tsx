@@ -26,7 +26,7 @@ import {
   seedSampleCogniaEvidence, 
   saveMultipleFiles 
 } from './services/db';
-import { exportAll35FoldersZip } from './services/exportService';
+import { exportAll35FoldersZip, downloadOfflineAppPackage } from './services/exportService';
 import { Header } from './components/Header';
 import { StatsBar } from './components/StatsBar';
 import { FolderCard } from './components/FolderCard';
@@ -107,6 +107,19 @@ export default function App() {
       await exportAll35FoldersZip(folders);
     } catch (err) {
       console.error('Export archive error:', err);
+    }
+  };
+
+  // Download Standalone Offline Windows App Package (.ZIP)
+  const handleDownloadOfflineApp = async () => {
+    try {
+      setBatchUploadStatus('Generating offline Windows 11 standalone package (.ZIP)...');
+      await downloadOfflineAppPackage();
+      setBatchUploadStatus('Offline package downloaded! Extract to any folder and run RUN_OFFLINE_PORTAL.bat.');
+      setTimeout(() => setBatchUploadStatus(null), 5000);
+    } catch (err) {
+      console.error('Download offline app error:', err);
+      setBatchUploadStatus('Download failed. Please try again.');
     }
   };
 
@@ -222,6 +235,7 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenGuide={() => setGuideOpen(true)}
         onExportAllZip={handleExportAllZip}
+        onDownloadOfflineApp={handleDownloadOfflineApp}
         onSeedSample={handleSeedSample}
         isSeeding={isSeeding}
       />
@@ -262,11 +276,20 @@ export default function App() {
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-3">
               <button
-                onClick={() => masterDriveInputRef.current?.click()}
+                onClick={handleDownloadOfflineApp}
                 className="flex items-center gap-2 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-sm"
+                title="Download this software into an offline folder (.ZIP) with 1-click launcher"
+              >
+                <Database className="w-4 h-4" />
+                <span>Download Offline App Folder (.ZIP)</span>
+              </button>
+
+              <button
+                onClick={() => masterDriveInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-md transition-all"
                 title="Upload root school folder containing multiple standard subdirectories"
               >
-                <FolderPlus className="w-4 h-4" />
+                <FolderPlus className="w-4 h-4 text-emerald-300" />
                 <span>Upload Entire School Folder</span>
               </button>
 
@@ -284,7 +307,7 @@ export default function App() {
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-200 hover:text-white transition-colors"
               >
                 <HelpCircle className="w-4 h-4" />
-                <span>Windows 11 Guide</span>
+                <span>Offline Guide</span>
               </button>
             </div>
           </div>
@@ -409,11 +432,17 @@ export default function App() {
           folders={folders}
           onClose={() => setSettingsOpen(false)}
           onRefresh={handleRefresh}
+          onDownloadOfflineApp={handleDownloadOfflineApp}
         />
       )}
 
       {/* 4. Windows 11 Desktop Guide Modal */}
-      {guideOpen && <Windows11GuideModal onClose={() => setGuideOpen(false)} />}
+      {guideOpen && (
+        <Windows11GuideModal
+          onClose={() => setGuideOpen(false)}
+          onDownloadOfflineApp={handleDownloadOfflineApp}
+        />
+      )}
     </div>
   );
 }

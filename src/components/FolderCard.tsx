@@ -12,10 +12,11 @@ import {
   Check, 
   X,
   FileCheck2,
-  HardDrive
+  HardDrive,
+  Star
 } from 'lucide-react';
 import { CogniaFolder, FolderFile } from '../types';
-import { saveMultipleFiles, updateFolderMetadata, clearFolderFiles } from '../services/db';
+import { saveMultipleFiles, updateFolderMetadata, clearFolderFiles, updateFolderRating } from '../services/db';
 import { formatBytes } from '../services/exportService';
 
 interface FolderCardProps {
@@ -35,11 +36,19 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   const [editedName, setEditedName] = useState<string>(folder.name);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadPercent, setUploadPercent] = useState<number>(0);
+  const [hoverRating, setHoverRating] = useState<number>(0);
 
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isPopulated = folder.fileCount > 0;
+  const currentRating = folder.rating !== undefined ? folder.rating : (isPopulated ? 4 : 0);
+
+  const handleSetRating = async (ratingVal: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateFolderRating(folder.id, ratingVal);
+    onRefresh();
+  };
 
   // Handle Directory Upload via webkitdirectory
   const handleDirectoryUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -284,18 +293,50 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         </p>
       </div>
 
-      {/* Progress Bar (Upload & Evidence Readiness) */}
+      {/* 5 Stars Rating & Storage Section */}
       <div className="px-4 mt-3">
-        <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium mb-1">
-          <span>Evidence Completeness</span>
-          <span className="font-mono tabular-nums text-slate-600">
-            {isPopulated ? formatBytes(folder.totalSize) : '0%'}
+        {/* 5 Stars Rating (Above Storage) */}
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-semibold text-slate-500 font-mono">
+            Rating
+          </span>
+          <div 
+            className="flex items-center gap-0.5" 
+            title={`Rating: ${currentRating} of 5 Stars (Click to change)`}
+          >
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                onClick={(e) => handleSetRating(star, e)}
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
+                className="p-0.5 text-amber-400 hover:scale-125 transition-transform"
+                title={`Rate ${star} Star${star > 1 ? 's' : ''}`}
+              >
+                <Star
+                  className={`w-3.5 h-3.5 ${
+                    star <= (hoverRating || currentRating)
+                      ? 'fill-amber-400 text-amber-500 drop-shadow-2xs'
+                      : 'text-slate-300'
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Storage Bar (Replaced Evidence Completeness with Storage) */}
+        <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium mb-1">
+          <span>Storage</span>
+          <span className="font-mono tabular-nums text-slate-700 font-semibold">
+            {isPopulated ? formatBytes(folder.totalSize) : '0 B'}
           </span>
         </div>
         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
           <div
             className={`h-full transition-all duration-300 ${
-              isPopulated ? 'bg-emerald-600' : 'bg-amber-400/50'
+              isPopulated ? 'bg-emerald-600' : 'bg-slate-200'
             }`}
             style={{ width: `${Math.max(progressPercent, isPopulated ? 25 : 0)}%` }}
           />

@@ -3,9 +3,10 @@ import { X, Monitor, Download, HardDrive, ShieldCheck, Terminal, FolderCheck, Ch
 
 interface Windows11GuideModalProps {
   onClose: () => void;
+  onDownloadOfflineApp: () => void;
 }
 
-export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClose }) => {
+export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClose, onDownloadOfflineApp }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-150">
       <div className="w-full max-w-2xl bg-white border border-slate-300 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -17,7 +18,7 @@ export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClos
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">
-                Windows 11 Desktop Launch & Offline Guide
+                Download & Run Software Offline on Windows 11
               </h3>
               <p className="text-xs text-slate-500">
                 Nada International School Cognia Portal Deployment
@@ -34,13 +35,38 @@ export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClos
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto">
-          {/* Method 1: Instant Windows 11 PWA Desktop App (Recommended) */}
+          {/* Quick 1-Click Action: Download ZIP */}
+          <div className="p-5 bg-gradient-to-r from-emerald-900 to-emerald-800 text-white rounded-2xl shadow-sm space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300 font-mono">
+                  Recommended Offline Package
+                </span>
+                <h4 className="text-base font-bold text-white mt-0.5">
+                  Download Standalone Offline App (.ZIP)
+                </h4>
+                <p className="text-xs text-emerald-100 leading-relaxed mt-1">
+                  Downloads a complete ZIP bundle with <code className="bg-emerald-950/60 px-1 py-0.5 rounded text-amber-200">RUN_OFFLINE_PORTAL.bat</code>. 
+                  Extract to any folder on your Windows 11 machine and double-click to launch without needing Wi-Fi or internet.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onDownloadOfflineApp}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Offline Software Bundle (.ZIP)</span>
+            </button>
+          </div>
+
+          {/* Method 1: Instant Windows 11 PWA Desktop App */}
           <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2.5">
             <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
               <span className="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center text-xs">
                 1
               </span>
-              <span>Install as Windows 11 Desktop Application (Recommended)</span>
+              <span>Install to Windows 11 Taskbar with 1-Click (PWA Mode)</span>
             </div>
             <p className="text-xs text-emerald-950 leading-relaxed">
               You can run this portal as an official, standalone Windows 11 window with its own icon on your Taskbar and Start Menu without any code changes:

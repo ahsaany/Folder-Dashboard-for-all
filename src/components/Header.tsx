@@ -18,6 +18,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onOpenGuide: () => void;
   onExportAllZip: () => void;
+  onDownloadOfflineApp: () => void;
   onSeedSample: () => void;
   isSeeding: boolean;
 }
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   onOpenGuide,
   onExportAllZip,
+  onDownloadOfflineApp,
   onSeedSample,
   isSeeding,
 }) => {
@@ -135,11 +137,22 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onExportAllZip}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors"
+            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors"
             title="Export full 35-folder archive as ZIP"
           >
             <Archive className="w-3.5 h-3.5 text-amber-300" />
             <span>Export Archive</span>
+          </button>
+
+          {/* Download Full Offline App Package */}
+          <button
+            type="button"
+            onClick={onDownloadOfflineApp}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900 hover:bg-black text-amber-300 rounded-lg text-xs font-bold shadow-2xs border border-emerald-700/80 transition-colors"
+            title="Download complete offline software folder (.ZIP) with Windows 11 launcher"
+          >
+            <HardDrive className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">Download App (.ZIP)</span>
           </button>
 
           {/* Windows 11 Desktop Guide */}
