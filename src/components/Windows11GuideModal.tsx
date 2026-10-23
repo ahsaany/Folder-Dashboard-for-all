@@ -60,42 +60,59 @@ export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClos
             </button>
           </div>
 
-          {/* Method 1: Instant Windows 11 PWA Desktop App */}
+          {/* Method 1: 1-Click RUN_OFFLINE_PORTAL.bat Launcher */}
           <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2.5">
             <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
               <span className="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center text-xs">
                 1
               </span>
-              <span>Install to Windows 11 Taskbar with 1-Click (PWA Mode)</span>
+              <span>1-Click Offline Launcher: RUN_OFFLINE_PORTAL.bat (Recommended)</span>
             </div>
             <p className="text-xs text-emerald-950 leading-relaxed">
-              You can run this portal as an official, standalone Windows 11 window with its own icon on your Taskbar and Start Menu without any code changes:
+              Yeh method bina kisi Node.js ya extra software ke direct Windows 11 par chalta hai:
             </p>
             <ol className="text-xs text-emerald-900 list-decimal list-inside space-y-1.5 pl-2 font-medium">
-              <li>In Microsoft Edge or Google Chrome on Windows 11, click the three dots menu (<kbd className="px-1.5 py-0.5 bg-white border border-emerald-300 rounded text-[10px]">···</kbd>).</li>
-              <li>Select <span className="font-bold">Apps</span> &rarr; <span className="font-bold">Install this site as an app</span>.</li>
-              <li>Name it: <span className="font-bold text-emerald-950">Nada International School Cognia Portal</span>.</li>
-              <li>Check <span className="font-bold">Pin to Taskbar</span> and <span className="font-bold">Pin to Start</span>.</li>
-              <li>The app now launches in its own isolated Windows 11 frame, completely offline!</li>
+              <li>Downloaded ZIP file ko right-click karke <span className="font-bold">Extract All</span> karein kisi folder mein (jaise <code className="bg-white px-1 py-0.5 rounded text-emerald-950">C:\NIS_Cognia_Portal</code> ya Desktop).</li>
+              <li>Folder open karein aur <span className="font-bold text-emerald-950">RUN_OFFLINE_PORTAL.bat</span> par double click karein.</li>
+              <li>Ek black command window open hogi jo local server start karegi, aur Microsoft Edge automatically <span className="font-bold">http://localhost:3000</span> par app mode mein open ho jayega!</li>
+              <li><span className="text-amber-800 font-bold">Important:</span> Black command window ko band mat karein (minimize kar sakte hain), jab tak app use karni ho.</li>
             </ol>
           </div>
 
-          {/* Method 2: Running Locally with Node.js / Vite */}
+          {/* Method 2: Browser Install (PWA Desktop App) */}
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
             <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
               <span className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">
                 2
               </span>
-              <span>Running Locally via Terminal (Windows PowerShell / CMD)</span>
+              <span>Install directly to Windows 11 Taskbar (Edge / Chrome PWA)</span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              If running from a local folder on your computer:
+              Jab portal browser mein open ho:
+            </p>
+            <ol className="text-xs text-slate-700 list-decimal list-inside space-y-1.5 pl-2">
+              <li>Browser ke address bar par right side mein <span className="font-bold">App Install icon</span> par click karein (ya menu <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px]">···</kbd> &rarr; <span className="font-bold">Apps</span> &rarr; <span className="font-bold">Install this site as an app</span>).</li>
+              <li><span className="font-bold">Install</span> par click karein aur <span className="font-bold">Pin to Taskbar</span> select karein.</li>
+              <li>Ab aap desktop icon par click karke direct offline app chala sakte hain!</li>
+            </ol>
+          </div>
+
+          {/* Method 3: Running Locally with Node.js */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+            <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+              <span className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs">
+                3
+              </span>
+              <span>Developer Run via Node.js (RUN_WITH_NODEJS.bat)</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Agar aapke computer mein Node.js installed hai:
             </p>
             <div className="bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-xs space-y-1">
-              <p># 1. Install dependencies</p>
+              <p className="text-slate-400"># Simply double click RUN_WITH_NODEJS.bat or run:</p>
+              <p className="text-white">cd source</p>
               <p className="text-white">npm install</p>
-              <p className="pt-1 text-emerald-400"># 2. Launch the Windows 11 offline portal</p>
-              <p className="text-white">npm run dev</p>
+              <p className="text-emerald-400">npm run dev</p>
             </div>
             <p className="text-[11px] text-slate-500">
               Open <span className="font-mono font-semibold text-slate-700">http://localhost:3000</span>.
