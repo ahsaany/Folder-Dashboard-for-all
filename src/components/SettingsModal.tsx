@@ -16,20 +16,24 @@ import {
 import { CogniaFolder } from '../types';
 import { getStorageMetrics, resetAllDataToDefault, seedSampleCogniaEvidence } from '../services/db';
 import { exportAll35FoldersZip, formatBytes } from '../services/exportService';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
 
 interface SettingsModalProps {
   folders: CogniaFolder[];
   onClose: () => void;
-  onRefresh: () => void;
-  onDownloadOfflineApp: () => void;
+  onRefresh?: () => void;
+  onDataReset?: () => void;
+  onDownloadOfflineApp?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   folders,
   onClose,
   onRefresh,
+  onDataReset,
   onDownloadOfflineApp,
 }) => {
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [metrics, setMetrics] = useState<{ usedBytes: number; quotaBytes: number; fileCount: number }>({
     usedBytes: 0,
     quotaBytes: 1024 * 1024 * 1024,
@@ -48,23 +52,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     fetchStorage();
   }, [folders]);
 
-  const handleResetData = async () => {
-    if (
-      window.confirm(
-        'WARNING: This will reset all 35 folder titles to standard Cognia accreditation names and remove all uploaded evidence files from this browser. Are you sure you wish to continue?'
-      )
-    ) {
-      await resetAllDataToDefault();
-      setActionMessage('Database cleared and reset to Cognia 35 Standards baseline.');
-      onRefresh();
-      setTimeout(() => setActionMessage(null), 3000);
-    }
+  const handleResetData = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Portal Database',
+      message: 'WARNING: This will reset all 35 folder titles to standard Cognia accreditation names and remove all uploaded evidence files from this browser. Are you sure you wish to continue?',
+      confirmLabel: 'Reset Everything',
+      isDestructive: true,
+      onConfirm: async () => {
+        await resetAllDataToDefault();
+        setActionMessage('Database cleared and reset to Cognia 35 Standards baseline.');
+        (onRefresh || onDataReset)?.();
+        setTimeout(() => setActionMessage(null), 3000);
+      },
+    });
   };
 
   const handleSeedSamples = async () => {
     await seedSampleCogniaEvidence();
     setActionMessage('Sample Cognia evidence documents and PDFs generated.');
-    onRefresh();
+    (onRefresh || onDataReset)?.();
     setTimeout(() => setActionMessage(null), 3000);
   };
 
@@ -234,6 +241,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+      />
     </div>
   );
 };

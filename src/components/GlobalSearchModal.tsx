@@ -8,7 +8,9 @@ import {
   FileSpreadsheet, 
   FileImage, 
   FileCode, 
-  File 
+  File, 
+  Music, 
+  Video 
 } from 'lucide-react';
 import { CogniaFolder, FolderFile, SearchResult } from '../types';
 import { searchFiles } from '../services/db';
@@ -56,9 +58,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       const matchedF = folders.filter(
         (f) =>
           f.name.toLowerCase().includes(cleanQ) ||
-          f.standardCode.toLowerCase().includes(cleanQ) ||
           f.description.toLowerCase().includes(cleanQ) ||
-          f.domain.toLowerCase().includes(cleanQ)
+          f.domain.toLowerCase().includes(cleanQ) ||
+          `module ${f.id}`.includes(cleanQ) ||
+          `folder ${f.id}`.includes(cleanQ)
       );
       setMatchingFolders(matchedF);
 
@@ -77,8 +80,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     if (e === 'pdf') return <FileText className="w-4 h-4 text-rose-500" />;
     if (['xlsx', 'xls', 'csv'].includes(e)) return <FileSpreadsheet className="w-4 h-4 text-emerald-600" />;
     if (['doc', 'docx'].includes(e)) return <FileText className="w-4 h-4 text-blue-600" />;
-    if (['png', 'jpg', 'jpeg', 'webp'].includes(e)) return <FileImage className="w-4 h-4 text-amber-500" />;
-    if (['json', 'txt', 'md'].includes(e)) return <FileCode className="w-4 h-4 text-purple-500" />;
+    if (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'].includes(e)) return <FileImage className="w-4 h-4 text-amber-500" />;
+    if (['mp3', 'wav', 'ogg', 'm4a'].includes(e)) return <Music className="w-4 h-4 text-purple-500" />;
+    if (['mp4', 'webm', 'mov', 'avi'].includes(e)) return <Video className="w-4 h-4 text-indigo-500" />;
+    if (['json', 'txt', 'md'].includes(e)) return <FileCode className="w-4 h-4 text-violet-500" />;
     return <File className="w-4 h-4 text-slate-400" />;
   };
 
@@ -91,7 +96,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search all 35 folders, standards, or evidence documents..."
+            placeholder="Search folders, evidence documents, audio, video..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 text-sm bg-transparent border-0 focus:outline-hidden text-slate-900 placeholder-slate-400 font-medium"
@@ -119,7 +124,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
               <Search className="w-8 h-8 mx-auto text-slate-300 mb-2 stroke-[1.5]" />
               <p className="font-medium text-slate-600">Global Evidence Search</p>
               <p className="mt-1 text-slate-400">
-                Type keywords like "Curriculum", "Survey", "Mission", "Safety", or file names like ".pdf"
+                Type keywords like "Leadership", "Curriculum", "Survey", "Safety", or file extensions like ".pdf", ".mp4", ".mp3"
               </p>
             </div>
           )}
@@ -128,7 +133,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             <div className="p-8 text-center text-slate-400 text-xs">
               <p className="font-medium text-slate-600">No matching files or folders found</p>
               <p className="mt-1 text-slate-400">
-                Try searching for standard names or upload folders into the empty slots.
+                Try searching for module names or upload evidence into empty slots.
               </p>
             </div>
           )}
@@ -137,7 +142,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           {matchingFolders.length > 0 && (
             <div className="p-2 space-y-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-2 font-mono">
-                Matching Standards & Folders ({matchingFolders.length})
+                Matching Modules & Folders ({matchingFolders.length})
               </span>
               {matchingFolders.slice(0, 5).map((folder) => (
                 <div
@@ -146,7 +151,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                   className="flex items-center justify-between p-2.5 rounded-xl hover:bg-emerald-50/80 cursor-pointer group transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs font-mono shrink-0">
+                    <div 
+                      className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-xs font-mono shrink-0 shadow-2xs"
+                      style={{ backgroundColor: folder.color || '#1B5E20' }}
+                    >
                       {String(folder.id).padStart(2, '0')}
                     </div>
                     <div className="min-w-0">
@@ -154,7 +162,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                         {folder.name}
                       </p>
                       <p className="text-[11px] text-slate-500 font-mono">
-                        {folder.standardCode} · {folder.domain} · {folder.fileCount} files
+                        Module {String(folder.id).padStart(2, '0')} · {folder.fileCount} {folder.fileCount === 1 ? 'file' : 'files'}
                       </p>
                     </div>
                   </div>
@@ -181,28 +189,32 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                       {getFileIcon(file.extension)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 group-hover:text-emerald-900 truncate">
+                      <p className="text-xs font-semibold text-slate-800 group-hover:text-emerald-900 truncate">
                         {file.name}
                       </p>
-                      <p className="text-[11px] text-slate-500 flex items-center gap-1.5 font-mono">
-                        <span>Folder {folder.id}: {folder.name}</span>
+                      <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
+                        <span className="text-emerald-800 font-semibold">{folder.name}</span>
+                        {file.subfolder && (
+                          <>
+                            <span>/</span>
+                            <span className="text-slate-600">{file.subfolder}</span>
+                          </>
+                        )}
                         <span>·</span>
                         <span>{formatBytes(file.size)}</span>
                       </p>
                     </div>
                   </div>
-                  <span className="text-[11px] font-medium text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-md shrink-0 shadow-2xs">
-                    Open File
-                  </span>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-700 shrink-0" />
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-          <span>Search spans local offline IndexedDB database</span>
+        {/* Footer Shortcut Helper */}
+        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Navigate with mouse or arrow keys</span>
           <span>Press ESC to close</span>
         </div>
       </div>

@@ -86,7 +86,7 @@ export async function refreshFolderStats(): Promise<CogniaFolder[]> {
   for (const f of files) {
     const stat = statsMap.get(f.folderId) || { count: 0, size: 0, lastUpdated: f.uploadedAt };
     stat.count += 1;
-    stat.size += f.size;
+    stat.size += f.size || 0;
     if (!stat.lastUpdated || new Date(f.uploadedAt) > new Date(stat.lastUpdated)) {
       stat.lastUpdated = f.uploadedAt;
     }
@@ -104,13 +104,39 @@ export async function refreshFolderStats(): Promise<CogniaFolder[]> {
     };
   });
 
-  // Sort strictly 1 through 35
   return updatedFolders.sort((a, b) => a.id - b.id);
 }
 
 export async function updateFolderMetadata(folder: CogniaFolder): Promise<void> {
   const db = await getDB();
   await db.put('folders', folder);
+}
+
+export async function updateFolderDescription(folderId: number, description: string): Promise<void> {
+  const db = await getDB();
+  const folder = await db.get('folders', folderId);
+  if (folder) {
+    folder.description = description;
+    await db.put('folders', folder);
+  }
+}
+
+export async function updateFolderColor(folderId: number, color: string): Promise<void> {
+  const db = await getDB();
+  const folder = await db.get('folders', folderId);
+  if (folder) {
+    folder.color = color;
+    await db.put('folders', folder);
+  }
+}
+
+export async function updateFolderSubfolders(folderId: number, subfolders: string[]): Promise<void> {
+  const db = await getDB();
+  const folder = await db.get('folders', folderId);
+  if (folder) {
+    folder.subfolders = subfolders;
+    await db.put('folders', folder);
+  }
 }
 
 export async function updateFolderRating(folderId: number, rating: number): Promise<void> {
@@ -122,12 +148,50 @@ export async function updateFolderRating(folderId: number, rating: number): Prom
   }
 }
 
+export async function addFolder(folder: CogniaFolder): Promise<void> {
+  const db = await getDB();
+  await db.put('folders', folder);
+}
+
+export async function deleteFolder(folderId: number): Promise<void> {
+  const db = await getDB();
+  // Clear all files in the folder first
+  await clearFolderFiles(folderId);
+  // Delete the folder entry
+  await db.delete('folders', folderId);
+}
+
+export async function deleteMultipleFolders(folderIds: number[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['folders', 'files'], 'readwrite');
+  const fileStore = tx.objectStore('files');
+  const folderStore = tx.objectStore('folders');
+  const index = fileStore.index('by-folder');
+
+  for (const id of folderIds) {
+    // Delete files in folder
+    let cursor = await index.openCursor(id);
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+    // Delete folder
+    await folderStore.delete(id);
+  }
+  await tx.done;
+}
+
 export async function getFilesInFolder(folderId: number): Promise<FolderFile[]> {
   const db = await getDB();
   const tx = db.transaction('files', 'readonly');
   const index = tx.store.index('by-folder');
   const files = await index.getAll(folderId);
   return files.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getAllFiles(): Promise<FolderFile[]> {
+  const db = await getDB();
+  return db.getAll('files');
 }
 
 export async function saveFile(file: FolderFile): Promise<void> {
@@ -147,6 +211,15 @@ export async function saveMultipleFiles(files: FolderFile[]): Promise<void> {
 export async function deleteFile(fileId: string): Promise<void> {
   const db = await getDB();
   await db.delete('files', fileId);
+}
+
+export async function deleteMultipleFiles(fileIds: string[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('files', 'readwrite');
+  for (const id of fileIds) {
+    await tx.store.delete(id);
+  }
+  await tx.done;
 }
 
 export async function clearFolderFiles(folderId: number): Promise<void> {
@@ -191,16 +264,17 @@ export async function searchFiles(query: string, folders: CogniaFolder[]): Promi
     const matchesExtension = file.extension.toLowerCase().includes(cleanQuery);
     const folder = folderMap.get(file.folderId);
     const matchesFolderName = folder ? folder.name.toLowerCase().includes(cleanQuery) : false;
-    const matchesStandard = folder ? folder.standardCode.toLowerCase().includes(cleanQuery) : false;
+    const matchesDomain = folder ? folder.domain.toLowerCase().includes(cleanQuery) : false;
+    const matchesSubfolder = file.subfolder ? file.subfolder.toLowerCase().includes(cleanQuery) : false;
 
-    if (matchesName || matchesExtension || matchesFolderName || matchesStandard) {
+    if (matchesName || matchesExtension || matchesFolderName || matchesDomain || matchesSubfolder) {
       if (folder) {
         results.push({ file, folder });
       }
     }
   }
 
-  return results.slice(0, 50); // limit to 50 results for rapid UI rendering
+  return results.slice(0, 50); // limit to 50 results
 }
 
 export async function getStorageMetrics(): Promise<{ usedBytes: number; quotaBytes: number; fileCount: number }> {
@@ -222,8 +296,7 @@ export async function getStorageMetrics(): Promise<{ usedBytes: number; quotaByt
 }
 
 // Generate realistic PDF and document blobs for instant sample testing
-function createMinimalPdfBlob(title: string, subtitle: string, bodyText: string): Blob {
-  // A clean, valid minimal PDF document in raw standard PDF syntax
+function createMinimalPdfBlob(title: string, category: string, bodyText: string): Blob {
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const pdfString = `%PDF-1.4
 1 0 obj
@@ -250,7 +323,7 @@ BT
 (${title}) Tj
 /F1 10 Tf
 0 -20 Td
-(Standard / Category: ${subtitle}) Tj
+(Category: ${category}) Tj
 0 -16 Td
 (Date of Archive: ${dateStr}) Tj
 0 -30 Td
@@ -260,7 +333,7 @@ BT
 0 -20 Td
 (${bodyText.substring(0, 80)}) Tj
 0 -16 Td
-(${bodyText.substring(80, 160) || 'Verified compliant with Cognia Performance Standards.'}) Tj
+(${bodyText.substring(80, 160) || 'Verified compliant with Cognia Accreditation Standards.'}) Tj
 0 -16 Td
 (${bodyText.substring(160, 240) || 'Nada International School Accreditation Committee - All Rights Reserved.'}) Tj
 0 -35 Td
@@ -294,7 +367,6 @@ function createTextBlob(content: string, type: string = 'text/plain'): Blob {
 
 export async function seedSampleCogniaEvidence(): Promise<void> {
   const sampleFiles: FolderFile[] = [
-    // Folder 1: Leadership & Shared Vision
     {
       id: 'f1_doc1',
       folderId: 1,
@@ -304,9 +376,10 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       extension: 'pdf',
       lastModified: Date.now() - 86400000 * 5,
       uploadedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+      subfolder: 'Core Governance',
       blob: createMinimalPdfBlob(
         'Mission and Vision Alignment',
-        'Standard 1.1 - Leadership Capacity',
+        'Leadership Capacity',
         'Comprehensive documentation proving stakeholder consensus on Nada International School core educational vision and Cognia values.'
       ),
       notes: 'Approved by NIS Governing Board and Academic Leadership.',
@@ -320,15 +393,14 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       extension: 'pdf',
       lastModified: Date.now() - 86400000 * 4,
       uploadedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+      subfolder: 'Core Governance',
       blob: createMinimalPdfBlob(
         'Strategic Goals Summary 2025-2027',
-        'Standard 1.1 - Strategic Priorities',
+        'Leadership Capacity - Priorities',
         'Target benchmarks for holistic student achievement, digital transformation, and staff retention across academic departments.'
       ),
       notes: 'Reviewed semi-annually by Academic Steering Council.',
     },
-
-    // Folder 2: Continuous Improvement System
     {
       id: 'f2_doc1',
       folderId: 2,
@@ -338,15 +410,14 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       extension: 'pdf',
       lastModified: Date.now() - 86400000 * 3,
       uploadedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+      subfolder: 'PDSA Cycles',
       blob: createMinimalPdfBlob(
         'Continuous Improvement Plan Framework',
-        'Standard 1.2 - Improvement Cycles',
+        'Leadership Capacity - Cycles',
         'Systematic cyclical review integrating student performance metrics, faculty feedback loops, and external diagnostic data.'
       ),
       notes: 'Contains Plan-Do-Study-Act (PDSA) cycle logs.',
     },
-
-    // Folder 11: Rigorous & Equitable Curriculum
     {
       id: 'f11_doc1',
       folderId: 11,
@@ -356,9 +427,10 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       extension: 'pdf',
       lastModified: Date.now() - 86400000 * 2,
       uploadedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      subfolder: 'Curriculum Maps',
       blob: createMinimalPdfBlob(
         'K-12 Vertical Curriculum Mapping',
-        'Standard 2.1 - Learning Capacity',
+        'Learning Capacity',
         'Interdisciplinary alignment across English, Mathematics, Sciences, and Humanities ensuring international benchmarking.'
       ),
       notes: 'Integrated with Cognia STEM certification guidelines.',
@@ -372,11 +444,10 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       extension: 'xlsx',
       lastModified: Date.now() - 86400000 * 2,
       uploadedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      blob: createTextBlob('Department,Standard,Status,Reviewer\nMath,Standard 2.1,Verified,HOD\nScience,Standard 2.1,Verified,HOD\nEnglish,Standard 2.1,Verified,HOD', 'text/csv'),
+      subfolder: 'Audits',
+      blob: createTextBlob('Department,Status,Reviewer\nMath,Verified,HOD\nScience,Verified,HOD\nEnglish,Verified,HOD', 'text/csv'),
       notes: 'Spreadsheet audit of departmental curriculum pacing.',
     },
-
-    // Folder 13: Assessment System
     {
       id: 'f13_doc1',
       folderId: 13,
@@ -388,13 +459,11 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       uploadedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
       blob: createMinimalPdfBlob(
         'Standardized Testing & Assessment Blueprint',
-        'Standard 2.3 - Learning Assessment',
+        'Learning Assessment',
         'Full operational protocols for diagnostic MAP testing, mock AP examinations, and rubric-based internal assessments.'
       ),
       notes: 'Includes benchmark grading scales and moderation protocols.',
     },
-
-    // Folder 23: Staff Recruitment & Retention
     {
       id: 'f23_doc1',
       folderId: 23,
@@ -406,13 +475,11 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       uploadedAt: new Date(Date.now() - 86400000 * 6).toISOString(),
       blob: createMinimalPdfBlob(
         'Faculty Credentials & Certification Matrix',
-        'Standard 3.1 - Resource Capacity',
+        'Resource Capacity',
         'Verified master database of instructional staff, subject-area degrees, teacher licensing status, and Cognia training units.'
       ),
       notes: '100% compliant with Ministry and Cognia teaching qualifications.',
     },
-
-    // Folder 25: Campus Facilities & Safety
     {
       id: 'f25_doc1',
       folderId: 25,
@@ -424,16 +491,14 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       uploadedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
       blob: createMinimalPdfBlob(
         'Annual Campus Safety & Emergency Drills',
-        'Standard 3.3 - Resource Capacity',
+        'Resource Capacity',
         'Complete facility inspection log, fire drill timestamps, assembly area mappings, and medical emergency escalation matrix.'
       ),
       notes: 'Inspected and certified by local civil defense authorities.',
     },
-
-    // Folder 30: Cognia Self-Assessment Diagnostic
     {
-      id: 'f30_doc1',
-      folderId: 30,
+      id: 'f31_doc1',
+      folderId: 31,
       name: 'Cognia_Self_Assessment_Narrative_Report_2026.pdf',
       size: 92000,
       type: 'application/pdf',
@@ -442,16 +507,14 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       uploadedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
       blob: createMinimalPdfBlob(
         'Cognia Self-Assessment Diagnostic Comprehensive Report',
-        'Exhibit 4.1 - Accreditation Portfolio',
-        'Comprehensive 40-page institutional self-evaluation detailing domain ratings across Leadership, Learning, and Resource Capacity.'
+        'Accreditation Portfolio',
+        'Comprehensive institutional self-evaluation detailing ratings across Leadership, Learning, and Resource Capacity.'
       ),
       notes: 'Final draft submitted for Cognia Peer Review Team inspection.',
     },
-
-    // Folder 31: Stakeholder Surveys
     {
-      id: 'f31_doc1',
-      folderId: 31,
+      id: 'f33_doc1',
+      folderId: 33,
       name: 'NIS_Cognia_Stakeholder_Survey_Summary.pdf',
       size: 41200,
       type: 'application/pdf',
@@ -460,10 +523,60 @@ export async function seedSampleCogniaEvidence(): Promise<void> {
       uploadedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
       blob: createMinimalPdfBlob(
         'Tri-Stakeholder Survey Synthesis (Parents, Students, Staff)',
-        'Exhibit 4.2 - Stakeholder Feedback',
+        'Stakeholder Feedback',
         'Statistical distribution of satisfaction scores, instructional satisfaction, climate perception, and open feedback summaries.'
       ),
       notes: 'High approval ratings across school safety and academic rigor.',
+    },
+    {
+      id: 'f1_email1',
+      folderId: 1,
+      name: 'Cognia_Steering_Committee_Kickoff_Meeting.eml',
+      size: 2450,
+      type: 'message/rfc822',
+      extension: 'eml',
+      lastModified: Date.now() - 86400000 * 2,
+      uploadedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      subfolder: 'Communications',
+      blob: createTextBlob(
+`From: Dr. Tariq Al-Hussaini <director@nada.edu.sa>
+To: Cognia Steering Committee <cognia-team@nada.edu.sa>
+Cc: Board of Directors <board@nada.edu.sa>
+Date: Mon, 14 Oct 2025 09:30:00 +0300
+Subject: NIS Cognia Accreditation Review & Evidence Dossier Assembly
+
+Dear Steering Committee and Department Coordinators,
+
+As we prepare for our upcoming Cognia External Review visit, please ensure that all 31 Performance Standards Cards are addressed with verified evidentiary artifacts.
+
+Key Milestones:
+1. Culture of Learning: Compile student surveys and equity policy documents.
+2. Leadership for Learning: Finalize governing body policies and strategic budget alignments.
+3. Engagement of Learning: Gather interdisciplinary unit plans, STEM logs, and PLC minutes.
+4. Growth in Learning: Reconcile longitudinal standardized assessment benchmarks (MAP, AP, SAT).
+
+Please upload all evidence into the Nada International School Cognia Portal. All files will be cached 100% offline for the visiting team.
+
+Warm regards,
+Dr. Tariq Al-Hussaini
+Director General, Nada International School
+Al Ahsa, Kingdom of Saudi Arabia`,
+        'message/rfc822'
+      ),
+      notes: 'Official executive email initiating Cognia evidence compilation cycle.',
+    },
+    {
+      id: 'f33_psd1',
+      folderId: 33,
+      name: 'NIS_Cognia_Accreditation_Exhibit_Banner.psd',
+      size: 148000,
+      type: 'image/vnd.adobe.photoshop',
+      extension: 'psd',
+      lastModified: Date.now() - 86400000 * 4,
+      uploadedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+      subfolder: 'Design Exhibits',
+      blob: createTextBlob('8BPS\x00\x01\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x04\x00\x00\x00\x08\x00\x03\x00\x00', 'image/vnd.adobe.photoshop'),
+      notes: 'Adobe Photoshop layered graphic file for school accreditation exhibits and entrance banner.',
     },
   ];
 

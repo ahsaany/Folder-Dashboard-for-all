@@ -3,7 +3,7 @@ import { X, Monitor, Download, HardDrive, ShieldCheck, Terminal, FolderCheck, Ch
 
 interface Windows11GuideModalProps {
   onClose: () => void;
-  onDownloadOfflineApp: () => void;
+  onDownloadOfflineApp?: () => void;
 }
 
 export const Windows11GuideModal: React.FC<Windows11GuideModalProps> = ({ onClose, onDownloadOfflineApp }) => {

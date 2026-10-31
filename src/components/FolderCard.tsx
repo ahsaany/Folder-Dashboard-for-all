@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Folder, 
   FolderCheck, 
@@ -13,27 +14,54 @@ import {
   X,
   FileCheck2,
   HardDrive,
-  Star
+  Star,
+  CheckSquare,
+  Square,
+  Palette,
+  Edit2
 } from 'lucide-react';
-import { CogniaFolder, FolderFile } from '../types';
-import { saveMultipleFiles, updateFolderMetadata, clearFolderFiles, updateFolderRating } from '../services/db';
+import { CogniaFolder, FolderFile, FOLDER_COLOR_PALETTE } from '../types';
+import { 
+  saveMultipleFiles, 
+  updateFolderMetadata, 
+  clearFolderFiles, 
+  updateFolderRating,
+  updateFolderDescription,
+  updateFolderColor
+} from '../services/db';
 import { formatBytes } from '../services/exportService';
+import { ConfirmModal, ConfirmDialogState } from './ConfirmModal';
 
 interface FolderCardProps {
   folder: CogniaFolder;
   onOpenWorkspace: (folder: CogniaFolder) => void;
   onRefresh: () => void;
+  onDeleteFolder?: (folderId: number) => void;
+  isManageMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (folderId: number) => void;
+  index?: number;
 }
 
 export const FolderCard: React.FC<FolderCardProps> = ({
   folder,
   onOpenWorkspace,
   onRefresh,
+  onDeleteFolder,
+  isManageMode = false,
+  isSelected = false,
+  onToggleSelect,
+  index = 0,
 }) => {
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [editedName, setEditedName] = useState<string>(folder.name);
+  const [isEditingDesc, setIsEditingDesc] = useState<boolean>(false);
+  const [editedDesc, setEditedDesc] = useState<string>(folder.description);
+  const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
+
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadPercent, setUploadPercent] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
@@ -43,6 +71,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
 
   const isPopulated = folder.fileCount > 0;
   const currentRating = folder.rating !== undefined ? folder.rating : (isPopulated ? 4 : 0);
+  const currentColor = folder.color || '#1B5E20';
 
   const handleSetRating = async (ratingVal: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -50,7 +79,14 @@ export const FolderCard: React.FC<FolderCardProps> = ({
     onRefresh();
   };
 
-  // Handle Directory Upload via webkitdirectory
+  const handleChangeColor = async (hex: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateFolderColor(folder.id, hex);
+    setShowColorPicker(false);
+    onRefresh();
+  };
+
+  // Handle Directory Upload via webkitdirectory (with subfolder detection)
   const handleDirectoryUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = event.target.files;
     if (!rawFiles || rawFiles.length === 0) return;
@@ -71,6 +107,16 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const uniqueId = `f${folder.id}_${Date.now()}_${Math.random().toString(36).substr(2, 6)}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
+      // Extract subfolder if relative path has directory depth
+      let subfolderName: string | undefined = undefined;
+      const relPath = (file as any).webkitRelativePath;
+      if (relPath && relPath.includes('/')) {
+        const parts = relPath.split('/');
+        if (parts.length > 2) {
+          subfolderName = parts.slice(1, parts.length - 1).join(' / ');
+        }
+      }
+
       newFiles.push({
         id: uniqueId,
         folderId: folder.id,
@@ -81,7 +127,8 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         blob: file,
         lastModified: file.lastModified,
         uploadedAt: new Date().toISOString(),
-        relativePath: (file as any).webkitRelativePath || file.name,
+        relativePath: relPath || file.name,
+        subfolder: subfolderName,
       });
 
       setUploadPercent(Math.round(((i + 1) / total) * 90));
@@ -126,16 +173,47 @@ export const FolderCard: React.FC<FolderCardProps> = ({
     setIsEditingName(false);
   };
 
-  const handleClear = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm(`Clear all ${folder.fileCount} evidence files from "${folder.name}"?`)) {
-      await clearFolderFiles(folder.id);
+  const handleSaveDescription = async () => {
+    if (editedDesc.trim() && editedDesc !== folder.description) {
+      await updateFolderDescription(folder.id, editedDesc.trim());
+      folder.description = editedDesc.trim();
       onRefresh();
+    }
+    setIsEditingDesc(false);
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Clear Folder Files',
+      message: `Clear all ${folder.fileCount} evidence files from "${folder.name}"? This removes them from local offline storage.`,
+      confirmLabel: 'Clear Files',
+      isDestructive: true,
+      onConfirm: async () => {
+        await clearFolderFiles(folder.id);
+        onRefresh();
+      },
+    });
+  };
+
+  const handleDeleteModule = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDeleteFolder) {
+      setConfirmDialog({
+        isOpen: true,
+        title: `Delete Module ${String(folder.id).padStart(2, '0')}`,
+        message: `Are you sure you want to delete Module ${folder.id} ("${folder.name}") and all ${folder.fileCount} stored files? This cannot be undone.`,
+        confirmLabel: 'Delete Module',
+        isDestructive: true,
+        onConfirm: () => {
+          onDeleteFolder(folder.id);
+        },
+      });
     }
   };
 
-  // Estimate completion progress indicator
-  // A standard Cognia folder is considered fully documented if it has >= 2 key evidence documents
+  // Progress ratio based on 2+ evidence docs
   const targetFiles = 2;
   const progressRatio = Math.min(folder.fileCount / targetFiles, 1);
   const progressPercent = Math.round(progressRatio * 100);
@@ -145,32 +223,44 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       case 'Leadership Capacity':
         return 'text-emerald-800 bg-emerald-50 border-emerald-200';
       case 'Learning Capacity':
-        return 'text-green-800 bg-green-50 border-green-200';
+        return 'text-sky-800 bg-sky-50 border-sky-200';
       case 'Resource Capacity':
         return 'text-amber-800 bg-amber-50 border-amber-200';
       case 'Accreditation Exhibits':
-        return 'text-blue-800 bg-blue-50 border-blue-200';
+        return 'text-purple-800 bg-purple-50 border-purple-200';
       default:
         return 'text-slate-700 bg-slate-50 border-slate-200';
     }
   };
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{
+        duration: 0.32,
+        delay: Math.min(index * 0.025, 0.4),
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      whileHover={{ y: -3, transition: { duration: 0.18 } }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`group relative flex flex-col bg-white/90 backdrop-blur-md rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
-        isDraggingOver
+      className={`group relative flex flex-col bg-white/90 backdrop-blur-md rounded-2xl border transition-colors duration-200 overflow-hidden shadow-xs hover:shadow-md ${
+        isSelected
+          ? 'border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/20'
+          : isDraggingOver
           ? 'border-emerald-600 ring-2 ring-emerald-500/30 bg-emerald-50/50'
           : isPopulated
-          ? 'border-emerald-200/90'
-          : 'border-slate-200/90'
+          ? 'border-slate-200/90 hover:border-slate-300'
+          : 'border-slate-200/80'
       }`}
     >
-      {/* Hidden File Inputs */}
+      {/* Hidden File Inputs supporting all media */}
       <input
         ref={folderInputRef}
         type="file"
@@ -185,6 +275,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         ref={fileInputRef}
         type="file"
         multiple
+        accept="*/*"
         className="hidden"
         onChange={handleDirectoryUpload}
       />
@@ -204,25 +295,80 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         </div>
       )}
 
-      {/* Top Card Bar: Number Badge, Domain, Status */}
+      {/* Top Card Bar: Number Badge, Domain, Checkbox / Delete, Status */}
       <div className="p-4 pb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          {/* Windows 11 Folder Number Tag */}
-          <div className="w-7 h-7 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs font-mono shadow-2xs shrink-0">
+          {/* Manage Mode Checkbox */}
+          {isManageMode && onToggleSelect && (
+            <button
+              type="button"
+              onClick={() => onToggleSelect(folder.id)}
+              className="text-amber-600 hover:text-amber-700 p-0.5"
+            >
+              {isSelected ? (
+                <CheckSquare className="w-5 h-5 text-amber-600" />
+              ) : (
+                <Square className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+          )}
+
+          {/* Color-Coded Number Badge */}
+          <div 
+            className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-xs font-mono shadow-2xs shrink-0"
+            style={{ backgroundColor: currentColor }}
+          >
             {String(folder.id).padStart(2, '0')}
           </div>
+
           <div>
-            <div className="text-[11px] font-mono font-semibold text-slate-500">
-              {folder.standardCode}
-            </div>
-            <div className={`inline-block text-[10px] font-medium px-1.5 py-0.2 rounded border ${getDomainColor(folder.domain)}`}>
-              {folder.domain}
+            <div className="text-xs font-mono font-bold text-slate-800">
+              Module {String(folder.id).padStart(2, '0')}
             </div>
           </div>
         </div>
 
-        {/* Status Badge: Empty vs Populated */}
-        <div className="shrink-0 text-right">
+        {/* Right Header Area: Status Badge & Color Palette Trigger */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Color Picker Popover Button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowColorPicker(!showColorPicker);
+              }}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Folder Color"
+            >
+              <span 
+                className="w-2.5 h-2.5 rounded-full block border border-black/15 shadow-2xs"
+                style={{ backgroundColor: currentColor }}
+              />
+            </button>
+
+            {showColorPicker && (
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1 z-40 p-2 bg-white rounded-xl shadow-xl border border-slate-200 flex flex-wrap gap-1 w-40 animate-in fade-in"
+              >
+                {FOLDER_COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={(e) => handleChangeColor(c.hex, e)}
+                    className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center hover:scale-115 transition-transform"
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  >
+                    {currentColor === c.hex && <Check className="w-3 h-3 text-white" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Populated / Empty Badge */}
           {isPopulated ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/90 text-emerald-800 border border-emerald-300">
               <Check className="w-3 h-3 text-emerald-700" />
@@ -233,10 +379,22 @@ export const FolderCard: React.FC<FolderCardProps> = ({
               <span>Empty</span>
             </span>
           )}
+
+          {/* Delete Single Module Button */}
+          {onDeleteFolder && (
+            <button
+              type="button"
+              onClick={handleDeleteModule}
+              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+              title={`Delete Module ${String(folder.id).padStart(2, '0')}`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Folder Name & Description */}
+      {/* Folder Name */}
       <div className="px-4 flex-1">
         {isEditingName ? (
           <div className="flex items-center gap-1.5 my-1">
@@ -288,9 +446,56 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           </div>
         )}
 
-        <p className="text-xs text-slate-500 line-clamp-2 mt-1.5 leading-relaxed">
-          {folder.description}
-        </p>
+        {/* Editable Description under Heading */}
+        {isEditingDesc ? (
+          <div className="mt-1.5 space-y-1">
+            <textarea
+              value={editedDesc}
+              onChange={(e) => setEditedDesc(e.target.value)}
+              rows={2}
+              className="w-full text-xs p-1.5 bg-white border border-emerald-600 rounded-md text-slate-800 focus:outline-hidden"
+              placeholder="Enter module description..."
+            />
+            <div className="flex items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={handleSaveDescription}
+                className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-[10px] font-semibold flex items-center gap-1"
+              >
+                <Check className="w-3 h-3" />
+                <span>Save</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingDesc(false)}
+                className="px-1.5 py-0.5 text-slate-400 hover:bg-slate-100 rounded text-[10px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div 
+            onClick={() => setIsEditingDesc(true)}
+            className="group/desc flex items-start justify-between gap-1 cursor-pointer mt-1"
+            title="Click to edit description"
+          >
+            <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+              {folder.description || 'Add module description...'}
+            </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditingDesc(true);
+              }}
+              className="opacity-0 group-hover/desc:opacity-100 p-0.5 text-slate-400 hover:text-emerald-700 transition-opacity shrink-0"
+              title="Edit description"
+            >
+              <Edit2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 5 Stars Rating & Storage Section */}
@@ -326,7 +531,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           </div>
         </div>
 
-        {/* Storage Bar (Replaced Evidence Completeness with Storage) */}
+        {/* Storage Bar */}
         <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium mb-1">
           <span>Storage</span>
           <span className="font-mono tabular-nums text-slate-700 font-semibold">
@@ -335,10 +540,11 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         </div>
         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
           <div
-            className={`h-full transition-all duration-300 ${
-              isPopulated ? 'bg-emerald-600' : 'bg-slate-200'
-            }`}
-            style={{ width: `${Math.max(progressPercent, isPopulated ? 25 : 0)}%` }}
+            className="h-full transition-all duration-300"
+            style={{ 
+              width: `${Math.max(progressPercent, isPopulated ? 25 : 0)}%`,
+              backgroundColor: currentColor
+            }}
           />
         </div>
       </div>
@@ -362,7 +568,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="p-1.5 bg-white hover:bg-slate-100 text-slate-600 rounded-lg border border-slate-200/90 shadow-2xs transition-colors"
-            title="Upload individual files"
+            title="Upload individual files (PDF, audio, video, images)"
           >
             <Upload className="w-3.5 h-3.5 text-emerald-700" />
           </button>
@@ -385,14 +591,21 @@ export const FolderCard: React.FC<FolderCardProps> = ({
           onClick={() => onOpenWorkspace(folder)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs transition-all ${
             isPopulated
-              ? 'bg-emerald-800 hover:bg-emerald-900 text-white'
+              ? 'text-white'
               : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
           }`}
+          style={isPopulated ? { backgroundColor: currentColor } : {}}
         >
           <Eye className="w-3.5 h-3.5" />
           <span>View Folder</span>
         </button>
       </div>
-    </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmModal
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+      />
+    </motion.div>
   );
 };

@@ -8,7 +8,7 @@ export async function exportFolderAsZip(folder: CogniaFolder, files: FolderFile[
   const zipFolder = zip.folder(folderSlug);
 
   // Add metadata readme
-  const readmeContent = `# ${folder.name} (${folder.standardCode})
+  const readmeContent = `# ${folder.name} (Module ${String(folder.id).padStart(2, '0')})
 Domain: ${folder.domain}
 Description: ${folder.description}
 Files Count: ${files.length}
@@ -20,11 +20,16 @@ ${folder.suggestedEvidences.map((e) => `- ${e}`).join('\n')}
 Notes:
 ${folder.notes || 'None'}
 `;
-  zipFolder?.file('README_Cognia_Standard.txt', readmeContent);
+  zipFolder?.file('README_Module_Overview.txt', readmeContent);
 
   for (const file of files) {
     if (file.blob) {
-      zipFolder?.file(file.name, file.blob);
+      if (file.subfolder) {
+        const sub = zipFolder?.folder(file.subfolder);
+        sub?.file(file.name, file.blob);
+      } else {
+        zipFolder?.file(file.name, file.blob);
+      }
     }
   }
 
@@ -47,7 +52,6 @@ export async function exportAll35FoldersZip(folders: CogniaFolder[]): Promise<vo
     totalFiles: allFiles.length,
     folders: folders.map((f) => ({
       id: f.id,
-      standardCode: f.standardCode,
       name: f.name,
       domain: f.domain,
       fileCount: f.fileCount,
@@ -56,21 +60,26 @@ export async function exportAll35FoldersZip(folders: CogniaFolder[]): Promise<vo
   };
   root?.file('MASTER_PORTAL_INDEX.json', JSON.stringify(manifest, null, 2));
 
-  // Organize by 35 folders
+  // Organize by folders and subfolders
   for (const folder of folders) {
-    const folderName = `Folder_${String(folder.id).padStart(2, '0')}_${folder.standardCode.replace(/\s+/g, '_')}_${folder.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const folderName = `Module_${String(folder.id).padStart(2, '0')}_${folder.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
     const subFolder = root?.folder(folderName);
 
     const folderFiles = allFiles.filter((f) => f.folderId === folder.id);
     for (const file of folderFiles) {
       if (file.blob) {
-        subFolder?.file(file.name, file.blob);
+        if (file.subfolder) {
+          const inner = subFolder?.folder(file.subfolder);
+          inner?.file(file.name, file.blob);
+        } else {
+          subFolder?.file(file.name, file.blob);
+        }
       }
     }
   }
 
   const content = await zip.generateAsync({ type: 'blob' });
-  const filename = `NIS_Cognia_Portal_All_35_Folders_${new Date().toISOString().slice(0, 10)}.zip`;
+  const filename = `NIS_Cognia_Portal_Archive_${new Date().toISOString().slice(0, 10)}.zip`;
   downloadBlob(content, filename);
 }
 
@@ -116,4 +125,3 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
-

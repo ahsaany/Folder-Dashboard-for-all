@@ -48,11 +48,16 @@ echo    Nada International School Cognia Portal - Windows 11 Offline Engine
 echo =========================================================================
 echo.
 echo Starting local offline server on http://localhost:3000 ...
-echo Opening in Microsoft Edge desktop app mode...
+echo Opening in desktop application window...
 echo.
 echo (Keep this command window open while using the application)
 echo.
-powershell -ExecutionPolicy Bypass -File "%~dp0start-server.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start-server.ps1"
+if %errorlevel% neq 0 (
+    echo.
+    echo [NOTE] PowerShell server interrupted. Trying Python fallback server...
+    python -m http.server 3000 || py -m http.server 3000
+)
 pause
 `;
   folder.file('RUN_OFFLINE_PORTAL.bat', batLauncher);
@@ -65,13 +70,9 @@ Write-Host "==========================================================" -Foregro
 Write-Host "  Nada International School Cognia Portal - Windows 11" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "Local offline server running at: http://localhost:$port" -ForegroundColor Cyan
-Write-Host "Launching Microsoft Edge / Chrome in Desktop App Mode..." -ForegroundColor White
 Write-Host "Keep this window open while using the portal." -ForegroundColor Gray
 Write-Host "To stop the server, press Ctrl+C or close this window." -ForegroundColor Gray
 Write-Host ""
-
-# Launch Edge or Chrome in app window
-Start-Process "msedge.exe" -ArgumentList "--app=http://localhost:$port" -ErrorAction SilentlyContinue
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
@@ -83,7 +84,17 @@ try {
     $listener = New-Object System.Net.HttpListener
     $listener.Prefixes.Add("http://localhost:$port/")
     $listener.Start()
-    Start-Process "msedge.exe" -ArgumentList "--app=http://localhost:$port" -ErrorAction SilentlyContinue
+}
+
+# Launch Edge in app mode, Chrome in app mode, or default browser
+try {
+    Start-Process "msedge.exe" -ArgumentList "--app=http://localhost:$port" -ErrorAction Stop
+} catch {
+    try {
+        Start-Process "chrome.exe" -ArgumentList "--app=http://localhost:$port" -ErrorAction Stop
+    } catch {
+        Start-Process "http://localhost:$port"
+    }
 }
 
 while ($listener.IsListening) {
@@ -115,6 +126,11 @@ while ($listener.IsListening) {
                 ".jpeg" { $response.ContentType = "image/jpeg" }
                 ".ico"  { $response.ContentType = "image/x-icon" }
                 ".pdf"  { $response.ContentType = "application/pdf" }
+                ".mp3"  { $response.ContentType = "audio/mpeg" }
+                ".wav"  { $response.ContentType = "audio/wav" }
+                ".ogg"  { $response.ContentType = "audio/ogg" }
+                ".mp4"  { $response.ContentType = "video/mp4" }
+                ".webm" { $response.ContentType = "video/webm" }
                 Default { $response.ContentType = "application/octet-stream" }
             }
             $response.Headers.Add("Access-Control-Allow-Origin", "*")
