@@ -36,11 +36,16 @@ import {
   saveMultipleFiles,
   deleteFolder,
   deleteMultipleFolders,
-  addFolder
+  addFolder,
+  getMasterStandardsDoc,
+  MasterStandardsDoc
 } from './services/db';
 import { exportAll35FoldersZip, downloadOfflineAppPackage } from './services/exportService';
 import { Header } from './components/Header';
 import { StatsBar } from './components/StatsBar';
+import { OverallComplianceCard } from './components/OverallComplianceCard';
+import { BrandingSettingsModal } from './components/BrandingSettingsModal';
+import { SchoolLogo } from './components/SchoolLogo';
 import { FolderCard } from './components/FolderCard';
 import { FolderWorkspaceModal } from './components/FolderWorkspaceModal';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
@@ -63,6 +68,24 @@ export default function App() {
   const [cogniaEvaluationOpen, setCogniaEvaluationOpen] = useState<boolean>(false);
   const [cogniaPdfModalOpen, setCogniaPdfModalOpen] = useState<boolean>(false);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+
+  // School Branding State (Editable Name & Replaceable Logo)
+  const [schoolName, setSchoolName] = useState<string>(() => {
+    try {
+      return localStorage.getItem('portal_school_name') || 'Nada International School';
+    } catch {}
+    return 'Nada International School';
+  });
+
+  const [customLogo, setCustomLogo] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('portal_school_logo') || null;
+    } catch {}
+    return null;
+  });
+
+  const [brandingModalOpen, setBrandingModalOpen] = useState<boolean>(false);
+  const [masterDoc, setMasterDoc] = useState<MasterStandardsDoc | null>(null);
 
   // Theme selection state with localStorage persistence
   const [currentThemeId, setCurrentThemeId] = useState<ThemeId>(() => {
@@ -100,11 +123,33 @@ export default function App() {
     } catch {}
   };
 
+  const handleUpdateSchoolName = (name: string) => {
+    setSchoolName(name);
+    try {
+      localStorage.setItem('portal_school_name', name);
+    } catch {}
+  };
+
+  const handleUpdateCustomLogo = (logoUrl: string | null) => {
+    setCustomLogo(logoUrl);
+    try {
+      if (logoUrl) {
+        localStorage.setItem('portal_school_logo', logoUrl);
+      } else {
+        localStorage.removeItem('portal_school_logo');
+      }
+    } catch {}
+  };
+
   // Load from IndexedDB on startup
   const loadData = async () => {
     try {
-      const data = await initializePortal();
+      const [data, doc] = await Promise.all([
+        initializePortal(),
+        getMasterStandardsDoc(),
+      ]);
       setFolders(data);
+      setMasterDoc(doc);
     } catch (err) {
       console.error('Failed to initialize local portal DB:', err);
     } finally {
@@ -131,8 +176,12 @@ export default function App() {
   }, []);
 
   const handleRefresh = async () => {
-    const updated = await refreshFolderStats();
+    const [updated, doc] = await Promise.all([
+      refreshFolderStats(),
+      getMasterStandardsDoc(),
+    ]);
     setFolders(updated);
+    setMasterDoc(doc);
     if (activeWorkspaceFolder) {
       const current = updated.find((f) => f.id === activeWorkspaceFolder.id);
       if (current) setActiveWorkspaceFolder(current);
@@ -387,6 +436,9 @@ export default function App() {
         onDownloadOfflineApp={handleDownloadOfflineApp}
         onSeedSample={handleSeedSample}
         isSeeding={isSeeding}
+        schoolName={schoolName}
+        customLogo={customLogo}
+        onOpenBrandingSettings={() => setBrandingModalOpen(true)}
       />
 
       {/* Batch Upload Notification */}
@@ -415,7 +467,7 @@ export default function App() {
               <span>Offline-First Windows 11 Accreditation Engine</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-white">
-              Cognia Standards & Evidence Repository
+              {schoolName} Cognia Standards & Evidence Repository
             </h2>
             <p className="text-xs sm:text-sm text-white/85 leading-relaxed max-w-2xl">
               Organize, store, and view school evidence across performance modules. 
@@ -433,14 +485,14 @@ export default function App() {
                 <span>Download Offline App Folder (.ZIP)</span>
               </button>
 
-              {/* Cognia AI Audit Moving Gauge Button */}
+              {/* Cognia Audit Moving Gauge Button */}
               <button
                 onClick={() => setCogniaEvaluationOpen(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md active:scale-95"
-                title="Open animated moving speedometer gauge and audit readiness analyzer (خودکار تشخیصی تجزیہ)"
+                title="Open animated moving speedometer gauge and audit readiness analyzer"
               >
                 <Activity className="w-4 h-4 text-slate-950 animate-spin" />
-                <span>Cognia Audit Gauge (خودکار تجزیہ)</span>
+                <span>Cognia Audit Gauge</span>
               </button>
 
               <button
@@ -471,20 +523,28 @@ export default function App() {
             </div>
           </div>
 
-          {/* Nada International School Logo prominently in front on the most Right Side */}
+          {/* School Emblem Logo prominently on the Right with click-to-edit branding */}
           <div className="shrink-0 flex items-center justify-center relative z-20">
-            <div className="p-3 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl hover:scale-105 transition-transform duration-300">
-              <img
-                src="/assets/aistudio/Nada_International_School_Logo_68af40dc.png"
-                alt="Nada International School"
-                className="w-36 h-36 sm:w-44 sm:h-44 object-contain drop-shadow-2xl"
-              />
+            <div 
+              onClick={() => setBrandingModalOpen(true)}
+              className="p-3 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer group"
+              title="Click to replace School Emblem Logo or customize School Name"
+            >
+              <SchoolLogo size={144} customLogo={customLogo} altText={schoolName} />
             </div>
           </div>
 
           {/* Decorative Background Accent */}
           <div className="absolute -right-10 -bottom-10 w-96 h-96 bg-emerald-700/20 rounded-full blur-3xl pointer-events-none" />
         </div>
+
+        {/* Offline Overall Compliance Progress Card with Live Animated SVG Progress Ring */}
+        <OverallComplianceCard
+          folders={folders}
+          onOpenCogniaEvaluation={() => setCogniaEvaluationOpen(true)}
+          onViewCogniaPdf={() => setCogniaPdfModalOpen(true)}
+          customMasterStandardsName={masterDoc?.name}
+        />
 
         {/* Statistics & Overview Bar */}
         <StatsBar
@@ -784,6 +844,8 @@ export default function App() {
       {cogniaEvaluationOpen && (
         <CogniaEvaluationModal
           folders={folders}
+          schoolName={schoolName}
+          customLogo={customLogo}
           onClose={() => setCogniaEvaluationOpen(false)}
           onOpenFolderWorkspace={(folder) => {
             setCogniaEvaluationOpen(false);
@@ -796,7 +858,7 @@ export default function App() {
         />
       )}
 
-      {/* Official Cognia Standards Resource Cards PDF Modal */}
+      {/* Master Cognia Standards Resource Cards PDF Modal */}
       {cogniaPdfModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-[1400px] h-[92vh] flex flex-col overflow-hidden">
@@ -805,10 +867,12 @@ export default function App() {
                 <FileText className="w-5 h-5 text-rose-600" />
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                    Cognia Performance Standards Resource Cards
+                    {masterDoc ? masterDoc.name : 'Cognia Performance Standards Resource Cards'}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    K–12 and Postsecondary Institutions (31 Performance Standards & Evidence Catalog)
+                    {masterDoc 
+                      ? 'Custom Uploaded Master Standards Guide for Institutional Evaluation'
+                      : 'K–12 and Postsecondary Institutions (31 Performance Standards & Evidence Catalog)'}
                   </p>
                 </div>
               </div>
@@ -822,7 +886,17 @@ export default function App() {
             </div>
             <div className="flex-1 overflow-hidden p-3 bg-slate-100">
               <PdfViewer 
-                file={{
+                file={masterDoc ? {
+                  id: 'master-standards-pdf',
+                  folderId: 0,
+                  name: masterDoc.name,
+                  size: masterDoc.size,
+                  type: 'application/pdf',
+                  extension: 'pdf',
+                  blob: masterDoc.blob,
+                  lastModified: Date.now(),
+                  uploadedAt: masterDoc.uploadedAt,
+                } : {
                   id: 'cognia-resource-cards-pdf',
                   folderId: 0,
                   name: 'COGNIA Performance Standards Resource Cards.pdf',
@@ -838,6 +912,17 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* School Branding Customization Modal (Editable Name & Replaceable Logo) */}
+      {brandingModalOpen && (
+        <BrandingSettingsModal
+          schoolName={schoolName}
+          onUpdateSchoolName={handleUpdateSchoolName}
+          customLogo={customLogo}
+          onUpdateCustomLogo={handleUpdateCustomLogo}
+          onClose={() => setBrandingModalOpen(false)}
+        />
       )}
 
       {/* Global Windows 11 Confirmation Dialog */}

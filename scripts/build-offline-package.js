@@ -24,6 +24,7 @@ async function createOfflineZip() {
   function addDirectoryToZip(currentDir, currentZipFolder) {
     const items = fs.readdirSync(currentDir);
     for (const item of items) {
+      if (item.endsWith('.zip')) continue;
       const fullPath = path.join(currentDir, item);
       const stat = fs.statSync(fullPath);
       if (stat.isDirectory()) {
@@ -37,6 +38,18 @@ async function createOfflineZip() {
   }
 
   addDirectoryToZip(distDir, folder);
+
+  // Guarantee key assets are present in the offline package
+  const logoPath = path.join(publicDir, 'assets', 'aistudio', 'Nada_International_School_Logo_68af40dc.png');
+  const pdfPath = path.join(publicDir, 'assets', 'aistudio', 'COGNIA_Performance_Standards_Cards_fc406561.pdf');
+  const aistudioZipFolder = folder.folder('assets')?.folder('aistudio');
+
+  if (fs.existsSync(logoPath) && aistudioZipFolder) {
+    aistudioZipFolder.file('Nada_International_School_Logo_68af40dc.png', fs.readFileSync(logoPath));
+  }
+  if (fs.existsSync(pdfPath) && aistudioZipFolder) {
+    aistudioZipFolder.file('COGNIA_Performance_Standards_Cards_fc406561.pdf', fs.readFileSync(pdfPath));
+  }
 
   // 2. Windows 11 1-Click Launcher (PowerShell Native HTTP Server - Zero Installs Needed)
   const batLauncher = `@echo off

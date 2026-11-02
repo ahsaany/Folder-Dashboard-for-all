@@ -582,3 +582,41 @@ Al Ahsa, Kingdom of Saudi Arabia`,
 
   await saveMultipleFiles(sampleFiles);
 }
+
+export interface MasterStandardsDoc {
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  blob: Blob;
+}
+
+export async function getMasterStandardsDoc(): Promise<MasterStandardsDoc | null> {
+  try {
+    const db = await getDB();
+    const doc = await db.get('settings', 'master_standards_doc');
+    return doc || null;
+  } catch (err) {
+    console.error('Failed to get master standards doc:', err);
+    return null;
+  }
+}
+
+export async function saveMasterStandardsDoc(file: File): Promise<MasterStandardsDoc> {
+  const db = await getDB();
+  const doc: MasterStandardsDoc = {
+    name: file.name,
+    size: file.size,
+    type: file.type || 'application/pdf',
+    uploadedAt: new Date().toISOString(),
+    blob: file,
+  };
+  await db.put('settings', doc, 'master_standards_doc');
+  return doc;
+}
+
+export async function resetMasterStandardsDoc(): Promise<void> {
+  const db = await getDB();
+  await db.delete('settings', 'master_standards_doc');
+}
+

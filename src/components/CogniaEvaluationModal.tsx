@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -23,7 +23,8 @@ import {
   Sliders,
   ShieldCheck,
   Flame,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 import { CogniaFolder, FolderFile } from '../types';
 import { 
@@ -33,7 +34,13 @@ import {
   CharacteristicSummary,
   COGNIA_STANDARDS_CATALOG 
 } from '../services/cogniaEvaluationService';
-import { getAllFiles } from '../services/db';
+import { 
+  getAllFiles, 
+  getMasterStandardsDoc, 
+  saveMasterStandardsDoc, 
+  resetMasterStandardsDoc, 
+  MasterStandardsDoc 
+} from '../services/db';
 import { SchoolLogo } from './SchoolLogo';
 
 interface CogniaEvaluationModalProps {
@@ -41,6 +48,8 @@ interface CogniaEvaluationModalProps {
   onClose: () => void;
   onOpenFolderWorkspace: (folder: CogniaFolder) => void;
   onViewCogniaPdf: () => void;
+  schoolName?: string;
+  customLogo?: string | null;
 }
 
 export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
@@ -48,6 +57,8 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
   onClose,
   onOpenFolderWorkspace,
   onViewCogniaPdf,
+  schoolName = 'Nada International School',
+  customLogo,
 }) => {
   const [allFiles, setAllFiles] = useState<FolderFile[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -55,13 +66,20 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'critical' | 'needs-work' | 'operational' | 'exemplary'>('critical');
   const [selectedCharFilter, setSelectedCharFilter] = useState<string>('all');
   const [activeGaugeTarget, setActiveGaugeTarget] = useState<'overall' | string>('overall');
+  const [masterDoc, setMasterDoc] = useState<MasterStandardsDoc | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState<boolean>(false);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load files and compute evaluation
+  // Load files, master doc, and compute evaluation
   const runEvaluation = async () => {
     setLoading(true);
     try {
-      const files = await getAllFiles();
+      const [files, doc] = await Promise.all([
+        getAllFiles(),
+        getMasterStandardsDoc(),
+      ]);
       setAllFiles(files);
+      setMasterDoc(doc);
       const result = evaluateAllModules(folders, files);
       setEvaluation(result);
     } catch (err) {
@@ -74,6 +92,37 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
   useEffect(() => {
     runEvaluation();
   }, [folders]);
+
+  const handleUploadMasterPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Please select a valid PDF document for master standards.');
+      return;
+    }
+
+    setUploadingPdf(true);
+    try {
+      const saved = await saveMasterStandardsDoc(file);
+      setMasterDoc(saved);
+      // Re-run evaluation with custom document acknowledgment
+      await runEvaluation();
+    } catch (err) {
+      console.error('Failed to save master standards PDF:', err);
+      alert('Could not save PDF to local database. Please try again.');
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleResetMasterPdf = async () => {
+    if (confirm('Reset to official Cognia Performance Standards Resource Cards PDF?')) {
+      await resetMasterStandardsDoc();
+      setMasterDoc(null);
+      await runEvaluation();
+    }
+  };
 
   if (!evaluation) {
     return (
@@ -92,7 +141,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
   // Determine active score to display on the animated gauge
   let currentGaugeScore = evaluation.overallScore;
   let currentGaugeLabel = 'Overall Readiness';
-  let currentGaugeUrdu = evaluation.levelUrdu;
+  let currentGaugeDescription = evaluation.summaryTextEn;
   let currentLevelNum = evaluation.level;
 
   if (activeGaugeTarget !== 'overall') {
@@ -100,7 +149,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
     if (char) {
       currentGaugeScore = char.score;
       currentGaugeLabel = char.name;
-      currentGaugeUrdu = char.nameUrdu;
+      currentGaugeDescription = `Evaluated score for ${char.name}: ${char.populatedStandards} of ${char.totalStandards} standards covered with ${char.totalFiles} evidence files.`;
       currentLevelNum = char.score >= 85 ? 4 : char.score >= 60 ? 3 : char.score >= 30 ? 2 : 1;
     }
   }
@@ -108,7 +157,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
   // Gauge angle (-90 deg at 0%, to +90 deg at 100%)
   const needleAngle = -90 + (currentGaugeScore / 100) * 180;
 
-  // Filter modules for "Kider Mehnat Ki Zaroorat Ha" list
+  // Filter modules for Priority Attention list
   const filteredModules = evaluation.moduleEvaluations.filter((m) => {
     if (selectedFilter !== 'all' && m.status !== selectedFilter) return false;
     if (selectedCharFilter !== 'all' && m.characteristic !== selectedCharFilter) return false;
@@ -133,11 +182,11 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
         {/* Title Bar with School Branding & Cognia Shield */}
         <div className="px-5 py-3 border-b border-slate-200 bg-gradient-to-r from-slate-50 via-emerald-50/30 to-slate-50 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3.5">
-            <SchoolLogo size={42} />
+            <SchoolLogo size={42} customLogo={customLogo} />
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-800 text-amber-300 font-mono">
-                  COGNIA AI AUDIT
+                  COGNIA AUDIT GAUGE
                 </span>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
                   Cognia Performance Standards Diagnostic & Live Gauge
@@ -148,7 +197,9 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                <span className="font-medium text-emerald-900 font-urdu">خودکار تشخیصی تجزیہ و ایویلیویشن گیج</span>
+                <span className="font-semibold text-emerald-900">{schoolName}</span>
+                <span>•</span>
+                <span>Automated Evidence Diagnostic & Comparison Gauge</span>
                 <span>•</span>
                 <span>31 Cognia Standards + 4 Institutional Exhibits</span>
                 <span>•</span>
@@ -158,6 +209,43 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Master Standards Document Picker / Uploader */}
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleUploadMasterPdf}
+              className="hidden"
+            />
+
+            {masterDoc ? (
+              <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-900 border border-blue-300 rounded-lg text-xs font-semibold">
+                <FileText className="w-3.5 h-3.5 text-blue-700" />
+                <span className="truncate max-w-[140px]" title={masterDoc.name}>
+                  {masterDoc.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetMasterPdf}
+                  className="text-blue-500 hover:text-rose-600 ml-1"
+                  title="Reset to official Cognia cards"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={uploadingPdf}
+                className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+                title="Upload custom offline Master Standards PDF for comparison & audit"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-600" />
+                <span>Upload Custom Standards PDF</span>
+              </button>
+            )}
+
             {/* View Official Cognia Cards PDF Button */}
             <button
               onClick={onViewCogniaPdf}
@@ -165,7 +253,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
               title="Read official Cognia Performance Standards Resource Cards PDF"
             >
               <FileText className="w-3.5 h-3.5 text-amber-700" />
-              <span>Official Cognia PDF</span>
+              <span>{masterDoc ? 'View Master Standards PDF' : 'Open Official Standards PDF'}</span>
               <ExternalLink className="w-3 h-3 text-amber-600 ml-0.5" />
             </button>
 
@@ -353,13 +441,13 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                         </span>
                       ) : (
                         <span className="text-rose-800 bg-rose-100 border-rose-300 px-2.5 py-0.5 rounded-full">
-                          🚨 Level 1: Insufficient (Urgent Effort Needed)
+                          🚨 Level 1: Insufficient (Priority Evidence Needed)
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-slate-600 font-medium font-urdu mt-1.5">
-                      {currentGaugeUrdu}
+                    <p className="text-xs text-slate-600 font-medium mt-1.5 max-w-xs mx-auto line-clamp-2">
+                      {currentGaugeLabel}: {currentGaugeDescription}
                     </p>
                   </div>
                 </div>
@@ -444,7 +532,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                       </div>
 
                       <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
-                        <span className="font-urdu text-slate-600">{char.nameUrdu}</span>
+                        <span className="text-slate-600 font-medium">{char.level}</span>
                         <span className="font-mono text-slate-400">{char.totalFiles} files</span>
                       </div>
                     </div>
@@ -470,7 +558,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: "Kider Mehnat Ki Zaroorat Ha" (Urgent Attention & Gaps Center) */}
+          {/* RIGHT COLUMN: Priority Gaps & Areas Needing Work */}
           <div className="flex-1 flex flex-col bg-slate-100/50 overflow-hidden">
             
             {/* Filter and Headline Ribbon */}
@@ -479,7 +567,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-rose-600" />
                   <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    کدھر محنت کی ضرورت ہے — Areas Needing Work & Evidence Gaps
+                    Priority Evidence Gaps & Areas Needing Attention
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -578,17 +666,17 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                             {isCritical && (
                               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                                 <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                <span>0 Evidence Files (فوری محنت درکار)</span>
+                                <span>0 Evidence Files (Urgent Evidence Required)</span>
                               </span>
                             )}
                             {isNeedsWork && (
                               <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                کام جاری ہے ({item.fileCount} {item.fileCount === 1 ? 'file' : 'files'})
+                                In Progress ({item.fileCount} {item.fileCount === 1 ? 'file' : 'files'})
                               </span>
                             )}
                             {isExemplary && (
                               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                مکمل اور معیاری ({item.fileCount} files)
+                                Complete & Verified ({item.fileCount} files)
                               </span>
                             )}
                           </div>
@@ -597,12 +685,9 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                             {item.standardName}
                           </h4>
 
-                          {/* Recommendation in Urdu and English */}
+                          {/* Recommendation in English */}
                           <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs">
-                            <p className="font-urdu text-slate-700 leading-relaxed font-medium">
-                              {item.recommendationUrdu}
-                            </p>
-                            <p className="text-slate-500 text-[11px] mt-0.5 font-sans">
+                            <p className="text-slate-700 font-medium leading-relaxed">
                               {item.recommendationEn}
                             </p>
                           </div>
@@ -636,7 +721,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                       {item.missingEvidences.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-100">
                           <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider block mb-1.5">
-                            Missing Recommended Artifacts (کاگنیا مطلوبہ دستاویزات):
+                            Cognia Required Evidence Artifacts (Missing):
                           </span>
                           <div className="flex flex-wrap gap-1.5">
                             {item.missingEvidences.map((ev, idx) => (
@@ -677,8 +762,8 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
             {/* Bottom Panel Status Summary */}
             <div className="p-3.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span className="font-semibold text-slate-800 font-urdu">{evaluation.summaryTextUrdu}</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                <span className="font-semibold text-slate-800">{evaluation.summaryTextEn}</span>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -686,7 +771,7 @@ export const CogniaEvaluationModal: React.FC<CogniaEvaluationModalProps> = ({
                   className="text-xs text-emerald-800 hover:text-emerald-900 hover:underline font-bold flex items-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>Open Official Standards PDF</span>
+                  <span>{masterDoc ? 'Open Master Standards Document' : 'Open Official Standards PDF'}</span>
                 </button>
               </div>
             </div>

@@ -4,14 +4,28 @@ interface SchoolLogoProps {
   className?: string;
   size?: number;
   showText?: boolean;
+  customLogo?: string | null;
+  altText?: string;
 }
 
 export const SchoolLogo: React.FC<SchoolLogoProps> = ({ 
   className = '', 
   size = 44,
+  customLogo,
+  altText = 'School Emblem Logo',
 }) => {
   const [imageError, setImageError] = useState(false);
-  const logoSrc = '/assets/aistudio/Nada_International_School_Logo_68af40dc.png';
+  
+  // Prefer explicit prop, then local storage, then default NIS asset
+  let activeSrc = customLogo;
+  if (!activeSrc) {
+    try {
+      activeSrc = localStorage.getItem('portal_school_logo') || undefined;
+    } catch {}
+  }
+  if (!activeSrc) {
+    activeSrc = '/assets/aistudio/Nada_International_School_Logo_68af40dc.png';
+  }
 
   if (!imageError) {
     return (
@@ -20,8 +34,9 @@ export const SchoolLogo: React.FC<SchoolLogoProps> = ({
         style={{ width: size, height: size }}
       >
         <img
-          src={logoSrc}
-          alt="Nada International School Logo"
+          key={activeSrc}
+          src={activeSrc}
+          alt={altText}
           className="w-full h-full object-contain"
           onError={() => setImageError(true)}
         />

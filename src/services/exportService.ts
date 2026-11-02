@@ -85,7 +85,7 @@ export async function exportAll35FoldersZip(folders: CogniaFolder[]): Promise<vo
 
 export async function downloadOfflineAppPackage(): Promise<void> {
   const zipFilename = 'Nada_International_School_Cognia_Portal_Windows11_Offline.zip';
-  const zipUrl = `/${zipFilename}`;
+  const zipUrl = `/${zipFilename}?t=${Date.now()}`;
 
   try {
     const res = await fetch(zipUrl);

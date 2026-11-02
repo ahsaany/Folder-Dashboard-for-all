@@ -793,29 +793,29 @@ export function evaluateAllModules(
   // Overall level
   let overallLevel: 1 | 2 | 3 | 4 = 1;
   let overallLevelLabel = 'Level 1: Insufficient';
-  let overallLevelUrdu = 'لیول 1: ناکافی (سخت محنت درکار ہے)';
+  let overallLevelUrdu = 'Level 1: Insufficient (Priority Evidence Needed)';
 
   if (overallScore >= 85) {
     overallLevel = 4;
     overallLevelLabel = 'Level 4: Exemplary (Cognia Ready)';
-    overallLevelUrdu = 'لیول 4: مثالی تیاری (کاگنیا ریڈی)';
+    overallLevelUrdu = 'Level 4: Exemplary (Accreditation Ready)';
   } else if (overallScore >= 60) {
     overallLevel = 3;
     overallLevelLabel = 'Level 3: Operational';
-    overallLevelUrdu = 'لیول 3: تسلی بخش و آپریشنل';
+    overallLevelUrdu = 'Level 3: Operational (Proficient Standards)';
   } else if (overallScore >= 30) {
     overallLevel = 2;
     overallLevelLabel = 'Level 2: Emerging';
-    overallLevelUrdu = 'لیول 2: ابتدائی مرحلہ (کام جاری ہے)';
+    overallLevelUrdu = 'Level 2: Emerging (Work In Progress)';
   }
 
   // Characteristics breakdown
   const charGroups: Record<string, { total: number; scoreSum: number; files: number; popCount: number; color: string; urdu: string }> = {
-    'Culture of Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#1B5E20', urdu: 'سیکھنے کا ماحول و کلچر' },
-    'Leadership for Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#D97706', urdu: 'تعلیمی قیادت و گورننس' },
-    'Engagement of Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#0284C7', urdu: 'طلبہ کی سرگرمی و تدریس' },
-    'Growth in Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#7C3AED', urdu: 'تعلیمی پیشرفت و نتائج' },
-    'Institutional Capacity': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#0D9488', urdu: 'ادارہ جاتی تیاری و پالیسیاں' },
+    'Culture of Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#1B5E20', urdu: 'Learning Culture & Climate' },
+    'Leadership for Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#D97706', urdu: 'Leadership & Governance' },
+    'Engagement of Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#0284C7', urdu: 'Curriculum & Instruction' },
+    'Growth in Learning': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#7C3AED', urdu: 'Assessment & Progress Data' },
+    'Institutional Capacity': { total: 0, scoreSum: 0, files: 0, popCount: 0, color: '#0D9488', urdu: 'Institutional Policy Exhibits' },
   };
 
   moduleEvaluations.forEach((m) => {

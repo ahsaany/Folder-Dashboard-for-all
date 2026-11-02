@@ -12,7 +12,8 @@ import {
   HardDrive,
   Palette,
   Activity,
-  FileText
+  FileText,
+  Pencil
 } from 'lucide-react';
 import { SchoolLogo } from './SchoolLogo';
 
@@ -27,6 +28,9 @@ interface HeaderProps {
   onDownloadOfflineApp: () => void;
   onSeedSample: () => void;
   isSeeding: boolean;
+  schoolName: string;
+  customLogo?: string | null;
+  onOpenBrandingSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,6 +44,9 @@ export const Header: React.FC<HeaderProps> = ({
   onDownloadOfflineApp,
   onSeedSample,
   isSeeding,
+  schoolName,
+  customLogo,
+  onOpenBrandingSettings,
 }) => {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -78,14 +85,33 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
       {/* Top Windows 11 Title Strip */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-2.5">
-        {/* Left: School Emblem & System Title */}
+        {/* Left: School Emblem & System Title with Edit Branding Trigger */}
         <div className="flex items-center gap-3.5">
-          <SchoolLogo size={46} />
+          <div 
+            onClick={onOpenBrandingSettings}
+            className="cursor-pointer group relative"
+            title="Click to replace School Emblem Logo"
+          >
+            <SchoolLogo size={46} customLogo={customLogo} />
+            <span className="absolute -bottom-1 -right-1 p-0.5 bg-white rounded-full shadow-xs border border-slate-200 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Pencil className="w-2.5 h-2.5 text-emerald-700" />
+            </span>
+          </div>
+
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 leading-none">
-                Nada International School Cognia Portal
-              </h1>
+              <button
+                type="button"
+                onClick={onOpenBrandingSettings}
+                className="group flex items-center gap-1.5 text-left text-slate-900 hover:text-emerald-900 transition-colors"
+                title="Click to edit school name or replace logo"
+              >
+                <h1 className="font-extrabold text-base sm:text-lg tracking-tight leading-none group-hover:underline">
+                  {schoolName} Cognia Portal
+                </h1>
+                <Pencil className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+
               {/* Windows 11 Offline Status Badge */}
               <div 
                 className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
@@ -130,17 +156,17 @@ export const Header: React.FC<HeaderProps> = ({
             </kbd>
           </button>
 
-          {/* Cognia AI Audit & Animated Moving Gauge Button */}
+          {/* Cognia Audit & Animated Moving Gauge Button */}
           <button
             type="button"
             onClick={onOpenCogniaEvaluation}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white rounded-lg text-xs font-bold shadow-2xs border border-emerald-600/70 transition-all hover:scale-102"
-            title="Open Cognia AI Audit, Moving Gauge & Evidence Gap Analyzer (خودکار تشخیصی تجزیہ)"
+            title="Open Cognia Audit Diagnostic, Live Speedometer Gauge & Evidence Gap Analyzer"
           >
             <Activity className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
             <span>Audit Gauge</span>
             <span className="hidden xl:inline text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black font-mono">
-              AI
+              LIVE
             </span>
           </button>
 
@@ -149,9 +175,9 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onViewCogniaPdf}
             className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-            title="View official Cognia Performance Standards Resource Cards PDF"
+            title="View Cognia Performance Standards Resource Cards PDF"
           >
-            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <FileText className="w-3.5 h-3.5 text-amber-600" />
             <span>Cognia PDF</span>
           </button>
 
@@ -178,7 +204,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Export Archive</span>
           </button>
 
-          {/* Download Full Offline App Package */}
+          {/* Download Full Standalone Offline App Package */}
           <button
             type="button"
             onClick={onDownloadOfflineApp}
@@ -194,7 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenTheme}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200/80 rounded-lg border border-slate-200 text-xs font-semibold transition-colors"
-            title="Change Theme Colors (Brown, Gold, Green, White & Combos)"
+            title="Change Theme Colors (Brown, Gold, Green, White & Rich Combos)"
           >
             <Palette className="w-3.5 h-3.5 text-amber-600" />
             <span className="hidden sm:inline">Theme</span>

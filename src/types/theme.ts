@@ -2,10 +2,17 @@ export type ThemeId =
   | 'combo-royal'
   | 'combo-gold-brown'
   | 'combo-emerald-gold'
+  | 'combo-oxford-navy'
+  | 'combo-crimson-gold'
+  | 'combo-cyber-slate'
+  | 'combo-warm-amber'
+  | 'combo-nordic-frost'
+  | 'combo-burgundy-executive'
   | 'single-green'
   | 'single-gold'
   | 'single-brown'
-  | 'single-white';
+  | 'single-white'
+  | 'single-navy';
 
 export interface PortalTheme {
   id: ThemeId;
@@ -73,6 +80,102 @@ export const PORTAL_THEMES: Record<ThemeId, PortalTheme> = {
     activeTab: 'bg-emerald-800 text-white shadow-xs',
     cardAccentBorder: 'hover:border-emerald-500',
   },
+  'combo-oxford-navy': {
+    id: 'combo-oxford-navy',
+    name: 'Oxford Navy & Gold (Navy + Gold + White)',
+    category: 'combination',
+    description: 'Prestigious academic deep navy blue paired with imperial gold leaf and clean white trim.',
+    swatches: ['#0A192F', '#D4AF37', '#1E3A8A', '#FFFFFF'],
+    primaryColor: '#0A192F',
+    accentColor: '#D4AF37',
+    bannerGradient: 'from-[#071120] via-[#0A192F] to-[#1E3A8A]',
+    bannerBorder: 'border-amber-400/40',
+    heroBadge: 'bg-blue-950/80 text-amber-300 border-amber-400/40',
+    heroButton: 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md',
+    headerAccent: 'text-blue-900',
+    activeTab: 'bg-blue-900 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-blue-500',
+  },
+  'combo-crimson-gold': {
+    id: 'combo-crimson-gold',
+    name: 'Harvard Crimson & Gold (Crimson + Gold + White)',
+    category: 'combination',
+    description: 'Distinguished collegiate burgundy crimson paired with warm champagne gold.',
+    swatches: ['#881337', '#F59E0B', '#BE123C', '#FFFFFF'],
+    primaryColor: '#881337',
+    accentColor: '#F59E0B',
+    bannerGradient: 'from-[#4C0519] via-[#881337] to-[#9F1239]',
+    bannerBorder: 'border-amber-300/40',
+    heroBadge: 'bg-rose-950/80 text-amber-300 border-amber-400/40',
+    heroButton: 'bg-amber-400 hover:bg-amber-300 text-rose-950 shadow-md',
+    headerAccent: 'text-rose-900',
+    activeTab: 'bg-rose-900 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-rose-400',
+  },
+  'combo-cyber-slate': {
+    id: 'combo-cyber-slate',
+    name: 'Nordic Slate & Cyan (Slate + Cyan + Silver)',
+    category: 'combination',
+    description: 'Modern, high-contrast Windows 11 executive theme with deep slate and luminescent electric cyan.',
+    swatches: ['#0F172A', '#06B6D4', '#38BDF8', '#F8FAFC'],
+    primaryColor: '#0F172A',
+    accentColor: '#06B6D4',
+    bannerGradient: 'from-[#020617] via-[#0F172A] to-[#1E293B]',
+    bannerBorder: 'border-cyan-500/30',
+    heroBadge: 'bg-slate-900 text-cyan-300 border-cyan-400/40',
+    heroButton: 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md font-bold',
+    headerAccent: 'text-slate-900',
+    activeTab: 'bg-slate-900 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-cyan-400',
+  },
+  'combo-warm-amber': {
+    id: 'combo-warm-amber',
+    name: 'Desert Bronze & Amber (Bronze + Amber + Sand)',
+    category: 'combination',
+    description: 'Rich Arabian desert palette blending roasted bronze, radiant amber, and warm desert dunes.',
+    swatches: ['#78350F', '#D97706', '#F59E0B', '#FEF3C7'],
+    primaryColor: '#78350F',
+    accentColor: '#F59E0B',
+    bannerGradient: 'from-[#451A03] via-[#78350F] to-[#B45309]',
+    bannerBorder: 'border-amber-400/40',
+    heroBadge: 'bg-amber-950/80 text-amber-200 border-amber-400/50',
+    heroButton: 'bg-amber-400 hover:bg-amber-300 text-amber-950 shadow-md',
+    headerAccent: 'text-amber-900',
+    activeTab: 'bg-amber-800 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-amber-500',
+  },
+  'combo-nordic-frost': {
+    id: 'combo-nordic-frost',
+    name: 'Nordic Teal & Mint (Deep Teal + Mint + Pearl)',
+    category: 'combination',
+    description: 'Refreshing architectural teal, sea-foam mint, and frosty pearl white.',
+    swatches: ['#134E4A', '#0D9488', '#5EEAD4', '#FFFFFF'],
+    primaryColor: '#134E4A',
+    accentColor: '#2DD4BF',
+    bannerGradient: 'from-[#042F2E] via-[#134E4A] to-[#0F766E]',
+    bannerBorder: 'border-teal-400/40',
+    heroBadge: 'bg-teal-950/80 text-teal-200 border-teal-400/40',
+    heroButton: 'bg-teal-400 hover:bg-teal-300 text-teal-950 shadow-md',
+    headerAccent: 'text-teal-900',
+    activeTab: 'bg-teal-800 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-teal-400',
+  },
+  'combo-burgundy-executive': {
+    id: 'combo-burgundy-executive',
+    name: 'Executive Burgundy & Champagne (Wine + Gold + Cream)',
+    category: 'combination',
+    description: 'Opulent executive palette with deep wine red, warm champagne gold, and soft cream.',
+    swatches: ['#4A044E', '#D97706', '#FAF5FF', '#FFFFFF'],
+    primaryColor: '#4A044E',
+    accentColor: '#D97706',
+    bannerGradient: 'from-[#2E0233] via-[#4A044E] to-[#701A75]',
+    bannerBorder: 'border-amber-400/40',
+    heroBadge: 'bg-fuchsia-950/80 text-amber-300 border-amber-400/40',
+    heroButton: 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md',
+    headerAccent: 'text-fuchsia-950',
+    activeTab: 'bg-fuchsia-950 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-fuchsia-400',
+  },
   'single-green': {
     id: 'single-green',
     name: 'Forest Emerald Green',
@@ -136,5 +239,21 @@ export const PORTAL_THEMES: Record<ThemeId, PortalTheme> = {
     headerAccent: 'text-slate-900',
     activeTab: 'bg-slate-900 text-white shadow-xs',
     cardAccentBorder: 'hover:border-slate-400',
+  },
+  'single-navy': {
+    id: 'single-navy',
+    name: 'Deep Midnight Navy',
+    category: 'single',
+    description: 'Deep maritime navy blue with crisp ice blue highlights for serious accreditation governance.',
+    swatches: ['#0B192C', '#1E3E62', '#000000'],
+    primaryColor: '#0B192C',
+    accentColor: '#38BDF8',
+    bannerGradient: 'from-[#030712] via-[#0B192C] to-[#1E3E62]',
+    bannerBorder: 'border-sky-500/30',
+    heroBadge: 'bg-blue-950/90 text-sky-200 border-sky-400/40',
+    heroButton: 'bg-sky-400 hover:bg-sky-300 text-slate-950 shadow-md font-bold',
+    headerAccent: 'text-sky-950',
+    activeTab: 'bg-sky-900 text-white shadow-xs',
+    cardAccentBorder: 'hover:border-sky-400',
   },
 };
